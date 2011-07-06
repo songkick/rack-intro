@@ -1,1 +1,350 @@
-docs/rack-intro.html
+<!DOCTYPE html>  <html> <head>   <title>rack-intro.rb</title>   <meta http-equiv="content-type" content="text/html; charset=UTF-8">   <link rel="stylesheet" media="all" href="docco.css" /> </head> <body>   <div id="container">     <div id="background"></div>          <table cellpadding="0" cellspacing="0">       <thead>         <tr>           <th class="docs">             <h1>               rack-intro.rb             </h1>           </th>           <th class="code">           </th>         </tr>       </thead>       <tbody>                               <tr id="section-1">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-1">&#182;</a>               </div>               <p>I recently wasted a ton of meeting time trying to communicate some patterns
+one can use building applications with <a href="http://rack.rubyforge.org/">Rack</a>, when what I <em>should</em> have done
+is write some code. This document is a brief absolute beginners guide to Rack
+and what you can do with it. Apologies for those parts that are already old
+hat for everyone.</p>
+
+<h1>What is Rack?</h1>
+
+<p><img src="http://rack.rubyforge.org/rack-logo.png" alt="rack" title="" /></p>
+
+<p>As its website will tell you:</p>
+
+<blockquote>
+  <p>Rack provides a minimal interface between webservers supporting Ruby and
+  Ruby frameworks.</p>
+</blockquote>
+
+<p>What this means is that Rack provides a bridge between Ruby web servers and
+application frameworks so that any application can easily be served with any
+web server. This has the side effect of making applications trivially
+composable.</p>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-2">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-2">&#182;</a>               </div>               <p>A Rack application is any Ruby object that responds to <code>call</code> by accepting a
+<code>Hash</code> representing the HTTP request environment and returning an <code>Array</code>
+containing a status code, a <code>Hash</code> of response headers, and an <code>Enumerable</code>
+response body. The simplest Rack app is just a <code>lambda</code>.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="n">application</span> <span class="o">=</span> <span class="nb">lambda</span> <span class="k">do</span> <span class="o">|</span><span class="n">env</span><span class="o">|</span>
+  <span class="o">[</span><span class="mi">200</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;Content-Type&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;text/plain&#39;</span><span class="p">},</span> <span class="o">[</span><span class="s1">&#39;Hello, World&#39;</span><span class="o">]]</span>
+<span class="k">end</span></pre></div>             </td>           </tr>                               <tr id="section-3">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-3">&#182;</a>               </div>               <p>Rack comes with a CLI program called <code>rackup</code> that lets you boot your app from
+a simple config file. In this file (called <code>config.ru</code>), we just load the
+application we want to run, and tell Rack to run it.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="n">application</span> <span class="o">=</span> <span class="nb">lambda</span> <span class="k">do</span> <span class="o">|</span><span class="n">env</span><span class="o">|</span>
+  <span class="o">[</span><span class="mi">200</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;Content-Type&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;text/plain&#39;</span><span class="p">},</span> <span class="o">[</span><span class="s1">&#39;Hello, World&#39;</span><span class="o">]]</span>
+<span class="k">end</span>
+
+<span class="n">run</span> <span class="n">application</span></pre></div>             </td>           </tr>                               <tr id="section-4">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-4">&#182;</a>               </div>               <p>We can run this file using <code>rackup</code> and we get a website!</p>
+
+<pre><code>$ rackup config.ru
+$ curl http://localhost:9292/
+Hello, World
+</code></pre>
+
+<p><code>rackup</code> lets you specify the web server, port, environment, and various other
+things, for example:</p>
+
+<pre><code>$ rackup config.ru -s thin -p 8000 -E production
+</code></pre>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-5">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-5">&#182;</a>               </div>               <p>Everything in the <code>config.ru</code> API and the <code>rackup</code> interface are also
+available through more object-y APIs in Ruby so it's easy to build up and run
+an application from anywhere in a Ruby program. For example this is how you'd
+run an application with <a href="http://code.macournoyer.com/thin/">Thin</a> using the Ruby API.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="no">Rack</span><span class="o">::</span><span class="no">Handler</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;thin&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">application</span><span class="p">,</span> <span class="ss">:Port</span> <span class="o">=&gt;</span> <span class="mi">8000</span><span class="p">)</span></pre></div>             </td>           </tr>                               <tr id="section-6">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-6">&#182;</a>               </div>               <h2>Middleware</h2>
+
+<p>Because Rack establishes a convention that all applications expose the same
+API, it is easy to produce middleware - components that act as proxies between
+the web server and the application and can either send a response themselves,
+or delegate the call down the stack and optionally modify what comes back.</p>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-7">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-7">&#182;</a>               </div>               <p>When Rack instantiates a middleware, it passes a reference to the next item
+down the stack so we can delegate to it. As an example, let's say we want all
+our apps to respond to <code>GET /ping</code> so we can check they are up. This is
+orthogonal to the concerns of the application and can be implemented as
+middleware:</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="k">class</span> <span class="nc">Ping</span>
+  <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+    <span class="vi">@app</span> <span class="o">=</span> <span class="n">app</span>
+  <span class="k">end</span>
+  
+  <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">env</span><span class="o">[</span><span class="s1">&#39;PATH_INFO&#39;</span><span class="o">]</span> <span class="o">==</span> <span class="s1">&#39;/ping&#39;</span> <span class="ow">and</span> <span class="n">env</span><span class="o">[</span><span class="s1">&#39;REQUEST_METHOD&#39;</span><span class="o">]</span> <span class="o">==</span> <span class="s1">&#39;GET&#39;</span>
+      <span class="o">[</span><span class="mi">200</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;Content-Type&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;text/plain&#39;</span><span class="p">},</span> <span class="o">[</span><span class="s1">&#39;OK&#39;</span><span class="o">]]</span>
+    <span class="k">else</span>
+      <span class="vi">@app</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+<span class="k">end</span></pre></div>             </td>           </tr>                               <tr id="section-8">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-8">&#182;</a>               </div>               <p>If you like, you can use <code>Rack::Request</code> to wrap <code>env</code> in an object-based API
+that provides convenience methods for most HTTP stuff.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="n">request</span> <span class="o">=</span> <span class="no">Rack</span><span class="o">::</span><span class="no">Request</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">path_info</span> <span class="o">==</span> <span class="s1">&#39;/ping&#39;</span> <span class="ow">and</span> <span class="n">request</span><span class="o">.</span><span class="n">get?</span>
+  <span class="o">[</span><span class="mi">200</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;Content-Type&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;text/plain&#39;</span><span class="p">},</span> <span class="o">[</span><span class="s1">&#39;OK&#39;</span><span class="o">]]</span>
+<span class="k">end</span></pre></div>             </td>           </tr>                               <tr id="section-9">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-9">&#182;</a>               </div>               <p>We can then insert this middleware in front of our application easily using
+<code>config.ru</code>. This configuration will cause Rack to build our stack by calling
+<code>Ping.new(application)</code>.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="n">use</span> <span class="no">Ping</span>
+<span class="n">run</span> <span class="n">application</span></pre></div>             </td>           </tr>                               <tr id="section-10">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-10">&#182;</a>               </div>               <p>You can use any number of middlewares in an application. People routinely use
+this to perform routing, logging, compression, data transformation and
+authentication. When you call <code>use</code>, the given class will be instantiated with
+a single object representing <em>everything</em> beneath it in the stack.</p>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-11">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-11">&#182;</a>               </div>               <p>Finally, the <code>rackup</code> DSL is available through the <code>Rack::Builder</code> class if
+you want to construct a Rack stack anywhere in your Ruby app. <code>Rack::Builder</code>
+creates a Rack application composed of the middlewares you specify, and you
+then use <code>Rack::Handler</code> to boot it.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="n">stack</span> <span class="o">=</span> <span class="no">Rack</span><span class="o">::</span><span class="no">Builder</span><span class="o">.</span><span class="n">new</span> <span class="k">do</span>
+  <span class="n">use</span> <span class="no">Ping</span>
+  <span class="n">run</span> <span class="n">application</span>
+<span class="k">end</span></pre></div>             </td>           </tr>                               <tr id="section-12">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-12">&#182;</a>               </div>               <h2>Why Rack?</h2>
+
+<p>Rack is very widely deployed and supported in the Ruby community. Sinatra,
+Rails 3, and many other frameworks support it. There are dozens of middlewares
+you can install for common tasks, and Rack itself comes with many tools that
+make assembling applications a breeze.</p>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-13">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-13">&#182;</a>               </div>               <h1>Rack patterns</h1>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-14">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-14">&#182;</a>               </div>               <p>I'm going to take a single example application with two controllers and show
+various ways you can build and configure it with Rack. Let's say we start with
+a Rails app that lets us create and retrieve artists and venues.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="k">class</span> <span class="nc">ArtistsController</span>
+  <span class="k">def</span> <span class="nf">create</span> <span class="p">;</span> <span class="k">end</span>
+  <span class="k">def</span> <span class="nf">show</span> <span class="p">;</span> <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="k">class</span> <span class="nc">VenuesController</span>
+  <span class="k">def</span> <span class="nf">create</span> <span class="p">;</span> <span class="k">end</span>
+  <span class="k">def</span> <span class="nf">show</span> <span class="p">;</span> <span class="k">end</span>
+<span class="k">end</span></pre></div>             </td>           </tr>                               <tr id="section-15">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-15">&#182;</a>               </div>               <p>The routes for this simple application will be:</p>
+
+<ul>
+<li><code>POST /artists</code></li>
+<li><code>GET /artists/:id</code></li>
+<li><code>POST /venues</code></li>
+<li><code>GET /venues/:id</code></li>
+</ul>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-16">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-16">&#182;</a>               </div>               <p>In a Rails application, all your controllers are bundled up into a single Rack
+application, say <code>Songkick::Application</code>. You could create a load of different
+apps and distribute the controllers across them, but if we use Rack directly
+we buy a little more freedom. Let's start by modelling our routes directly in
+Sinatra.</p>
+
+<p>This is a complete, valid <code>config.ru</code> file. We can run it and it does what you
+would expect:</p>
+
+<pre><code>$ curl http://localhost:9292/artists/5
+Artist number 5
+$ curl -X POST http://localhost:9292/venues -H 'Content-Length: 0'
+Venue created
+</code></pre>             </td>             <td class="code">               <div class="highlight"><pre><span class="nb">require</span> <span class="s1">&#39;sinatra&#39;</span>
+
+<span class="n">post</span> <span class="s1">&#39;/artists&#39;</span> <span class="k">do</span>
+  <span class="s1">&#39;Artist created&#39;</span>
+<span class="k">end</span>
+
+<span class="n">get</span> <span class="s1">&#39;/artists/:id&#39;</span> <span class="k">do</span>
+  <span class="s2">&quot;Artist number </span><span class="si">#{</span><span class="n">params</span><span class="o">[</span><span class="ss">:id</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="k">end</span>
+
+<span class="n">post</span> <span class="s1">&#39;/venues&#39;</span> <span class="k">do</span>
+  <span class="s1">&#39;Venue created&#39;</span>
+<span class="k">end</span>
+
+<span class="n">get</span> <span class="s1">&#39;/venue/:id&#39;</span> <span class="k">do</span>
+  <span class="s2">&quot;Venue number </span><span class="si">#{</span><span class="n">params</span><span class="o">[</span><span class="ss">:id</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="k">end</span>
+
+<span class="n">run</span> <span class="no">Sinatra</span><span class="o">::</span><span class="no">Application</span></pre></div>             </td>           </tr>                               <tr id="section-17">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-17">&#182;</a>               </div>               <h2>Delegation using Rack::URLMap</h2>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-18">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-18">&#182;</a>               </div>               <p>In our Sinatra example, we still have all our controllers bundled into a
+single application. What can do instead it split them into two applications
+and place a router in front.</p>
+
+<p>With this setup, <code>Artists</code> and <code>Venues</code> are now two distinct Rack applications
+and could trivially be run as separate processes. Notice how the routing
+within each app is only concerned with the paths within that resource's
+namespace; the namespace itself is handled by the router further up the stack.
+When using <code>map</code>, Rack will modify <code>PATH_INFO</code> so that downstream apps only
+have to route based on the parts of the path the router ignored.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="k">class</span> <span class="nc">Artists</span> <span class="o">&lt;</span> <span class="no">Sinatra</span><span class="o">::</span><span class="no">Base</span>
+  <span class="n">post</span> <span class="s1">&#39;/&#39;</span> <span class="k">do</span>
+    <span class="s1">&#39;Artist created&#39;</span>
+  <span class="k">end</span>
+  <span class="n">get</span> <span class="s1">&#39;/:id&#39;</span> <span class="k">do</span>
+    <span class="s2">&quot;Artist number </span><span class="si">#{</span><span class="n">params</span><span class="o">[</span><span class="ss">:id</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="k">class</span> <span class="nc">Venues</span> <span class="o">&lt;</span> <span class="no">Sinatra</span><span class="o">::</span><span class="no">Base</span>
+  <span class="n">post</span> <span class="s1">&#39;/&#39;</span> <span class="k">do</span>
+    <span class="s1">&#39;Venue created&#39;</span>
+  <span class="k">end</span>
+  <span class="n">get</span> <span class="s1">&#39;/:id&#39;</span> <span class="k">do</span>
+    <span class="s2">&quot;Venue number </span><span class="si">#{</span><span class="n">params</span><span class="o">[</span><span class="ss">:id</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="n">map</span> <span class="s1">&#39;/artists&#39;</span> <span class="k">do</span>
+  <span class="n">run</span> <span class="no">Artists</span>
+<span class="k">end</span>
+
+<span class="n">map</span> <span class="s1">&#39;/venues&#39;</span> <span class="k">do</span>
+  <span class="n">run</span> <span class="no">Venues</span>
+<span class="k">end</span></pre></div>             </td>           </tr>                               <tr id="section-19">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-19">&#182;</a>               </div>               <p>To emphasize the separation, we can bypass the <code>rackup</code> DSL and use the
+<code>Rack::URLMap</code> class ourselves. A <code>Rack::URLMap</code> instance is <em>itself</em> a Rack
+application, and so you can build trees of these to route your traffic.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="n">application</span> <span class="o">=</span> <span class="no">Rack</span><span class="o">::</span><span class="no">URLMap</span><span class="o">.</span><span class="n">new</span><span class="p">(</span>
+  <span class="s1">&#39;/artists&#39;</span> <span class="o">=&gt;</span> <span class="no">Artists</span><span class="p">,</span>
+  <span class="s1">&#39;/venues&#39;</span>  <span class="o">=&gt;</span> <span class="no">Venues</span>
+<span class="p">)</span>
+<span class="n">run</span> <span class="n">application</span></pre></div>             </td>           </tr>                               <tr id="section-20">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-20">&#182;</a>               </div>               <h2>Manual delegation using call()</h2>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-21">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-21">&#182;</a>               </div>               <p>You can even build your own router to do whatever arbitrary logic you like.
+For example, let's build an app that routes <code>POST</code> requests to <code>Artists</code> and
+<code>GET</code> requests to <code>Venues</code>. This setup responds as follows:</p>
+
+<pre><code>$ curl -X POST http://localhost:9292/ -H 'Content-Length: 0'
+Artist created
+$ curl http://localhost:9292/99
+Venue number 99
+</code></pre>             </td>             <td class="code">               <div class="highlight"><pre><span class="n">router</span> <span class="o">=</span> <span class="nb">lambda</span> <span class="k">do</span> <span class="o">|</span><span class="n">env</span><span class="o">|</span>
+  <span class="k">case</span> <span class="n">env</span><span class="o">[</span><span class="s1">&#39;REQUEST_METHOD&#39;</span><span class="o">]</span>
+    <span class="k">when</span> <span class="s1">&#39;POST&#39;</span> <span class="k">then</span> <span class="no">Artists</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="k">when</span> <span class="s1">&#39;GET&#39;</span>  <span class="k">then</span> <span class="no">Venues</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="n">run</span> <span class="n">router</span></pre></div>             </td>           </tr>                               <tr id="section-22">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-22">&#182;</a>               </div>               <p>Finally you can just use <code>run Artists</code> or <code>run Venues</code> if you just want to run
+<em>one</em> of these controllers in a single process.</p>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-23">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-23">&#182;</a>               </div>               <h2>Layouts as middleware</h2>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-24">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-24">&#182;</a>               </div>               <p>If you want to split an app into many pieces but still want to share a layout
+between them, this can easily be done with middleware. Let's make a middleware
+That renders a layout and delegates to the underlying app to get the page.</p>
+
+<p>The middleware starts out by making a call to the application to fetch a page,
+an extracts the response body (which all we can assume is that this responds
+to <code>each</code>). It then renders a complete page by combining the page with an ERB
+template for the layout.</p>
+
+<p>Then we just need a layout template that pipes the response body into the
+middle of the document.</p>
+
+<pre><code>&lt;!doctype html&gt;
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;title&gt;My awesome Rack app&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;% @page.each do |fragment| %&gt;&lt;%= fragment %&gt;&lt;% end %&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</code></pre>             </td>             <td class="code">               <div class="highlight"><pre><span class="k">class</span> <span class="nc">Layout</span>
+  <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">layout_template</span><span class="p">)</span>
+    <span class="vi">@app</span><span class="p">,</span> <span class="vi">@layout_template</span> <span class="o">=</span> <span class="n">app</span><span class="p">,</span> <span class="n">layout_template</span>
+  <span class="k">end</span>
+  
+  <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">page_body</span> <span class="o">=</span> <span class="vi">@app</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="n">env</span><span class="p">)</span><span class="o">[</span><span class="mi">2</span><span class="o">]</span>
+    <span class="n">body</span> <span class="o">=</span> <span class="no">Page</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">page_body</span><span class="p">,</span> <span class="vi">@layout_template</span><span class="p">)</span><span class="o">.</span><span class="n">render</span>
+    <span class="o">[</span><span class="mi">200</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;Content-Type&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;text/html&#39;</span><span class="p">},</span> <span class="o">[</span><span class="n">body</span><span class="o">]]</span>
+  <span class="k">end</span>
+  
+  <span class="k">class</span> <span class="nc">Page</span>
+    <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">layout_template</span><span class="p">)</span>
+      <span class="vi">@page</span><span class="p">,</span> <span class="vi">@layout_template</span> <span class="o">=</span> <span class="n">page</span><span class="p">,</span> <span class="n">layout_template</span>
+    <span class="k">end</span>
+    
+    <span class="k">def</span> <span class="nf">render</span>
+      <span class="n">template</span> <span class="o">=</span> <span class="no">ERB</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="no">File</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="vi">@layout_template</span><span class="p">))</span>
+      <span class="n">template</span><span class="o">.</span><span class="n">result</span><span class="p">(</span><span class="nb">binding</span><span class="p">)</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+<span class="k">end</span></pre></div>             </td>           </tr>                               <tr id="section-25">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-25">&#182;</a>               </div>               <p>Let's run our Sinatra app using this middleware:</p>
+
+<pre><code>$ curl http://localhost:9292/artists/3000
+&lt;!doctype html&gt;
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;title&gt;My awesome Rack app&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    Artist number 3000
+  &lt;/body&gt;
+&lt;/html&gt;
+</code></pre>             </td>             <td class="code">               <div class="highlight"><pre><span class="n">application</span> <span class="o">=</span> <span class="no">Rack</span><span class="o">::</span><span class="no">URLMap</span><span class="o">.</span><span class="n">new</span><span class="p">(</span>
+  <span class="s1">&#39;/artists&#39;</span> <span class="o">=&gt;</span> <span class="no">Artists</span><span class="p">,</span>
+  <span class="s1">&#39;/venues&#39;</span>  <span class="o">=&gt;</span> <span class="no">Venues</span>
+<span class="p">)</span>
+
+<span class="n">use</span> <span class="no">Layout</span><span class="p">,</span> <span class="s1">&#39;views/layouts/layout.erb&#39;</span>
+<span class="n">run</span> <span class="n">application</span></pre></div>             </td>           </tr>                               <tr id="section-26">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-26">&#182;</a>               </div>               <p>You can also apply middleware selectively to different parts of the stack. For
+example if we only wanted to use this layout for venues, we could do this:</p>
+
+<pre><code>$ curl http://localhost:9292/artists/3000
+Artist number 3000
+
+$ curl http://localhost:9292/venues/3000
+&lt;!doctype html&gt;
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;title&gt;My awesome Rack app&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    Venue number 3000
+  &lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+
+<p>You can imagine how we might use this to compose pages from various backends,
+for example to mimick an Nginx SSI setup to make it easy to boot a set of
+applications for development.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="n">map</span> <span class="s1">&#39;/artists&#39;</span> <span class="k">do</span>
+  <span class="n">run</span> <span class="no">Artists</span>
+<span class="k">end</span>
+
+<span class="n">map</span> <span class="s1">&#39;/venues&#39;</span> <span class="k">do</span>
+  <span class="n">use</span> <span class="no">Layout</span><span class="p">,</span> <span class="s1">&#39;views/layouts/layout.erb&#39;</span>
+  <span class="n">run</span> <span class="no">Venues</span>
+<span class="k">end</span></pre></div>             </td>           </tr>                               <tr id="section-27">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-27">&#182;</a>               </div>               <h2>Turn anything into a Rack app with Rack::Proxy</h2>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-28">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-28">&#182;</a>               </div>               <p><code>Rack::Proxy</code> is a third-party add-on (<code>gem install rack-proxy</code>) that lets you
+wrap a Rack object around any web service. This is useful for:</p>
+
+<ul>
+<li>Bringing third-party apps and other languages into your stack</li>
+<li>Using <code>Rack::Test</code> against non-Ruby apps</li>
+<li>Doing evil stuff to pages from third parties with Ruby!</li>
+</ul>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-29">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-29">&#182;</a>               </div>               <p>For example, here's a Rack-compatible version of Songkick. (In practise
+proxying arbitrary websites is not quite this simple but it's not terribly
+difficult either.)</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="nb">require</span> <span class="s1">&#39;rack/proxy&#39;</span>
+
+<span class="k">class</span> <span class="nc">Songkick</span> <span class="o">&lt;</span> <span class="no">Rack</span><span class="o">::</span><span class="no">Proxy</span>
+  <span class="k">def</span> <span class="nf">rewrite_env</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">env</span><span class="o">[</span><span class="s1">&#39;HTTP_HOST&#39;</span><span class="o">]</span> <span class="o">=</span> <span class="s1">&#39;www.songkick.com&#39;</span>
+    <span class="n">env</span><span class="o">[</span><span class="s1">&#39;SERVER_NAME&#39;</span><span class="o">]</span> <span class="o">=</span> <span class="s1">&#39;www.songkick.com&#39;</span>
+    <span class="n">env</span><span class="o">[</span><span class="s1">&#39;SERVER_PORT&#39;</span><span class="o">]</span> <span class="o">=</span> <span class="s1">&#39;80&#39;</span>
+    <span class="n">env</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="n">run</span> <span class="no">Songkick</span><span class="o">.</span><span class="n">new</span></pre></div>             </td>           </tr>                               <tr id="section-30">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-30">&#182;</a>               </div>               <p>This mix of middlewares, routers and proxies is very powerful and makes it
+easy to change the layout of an application without too much work.</p>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-31">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-31">&#182;</a>               </div>               <h1>Testing with Rack::Test</h1>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-32">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-32">&#182;</a>               </div>               <p><code>Rack::Test</code> (<code>gem install rack-test</code>) is an API for testing Rack apps. It is
+very useful for specifying protocol-level details of application responses,
+and can also be used as a backend for high-level testing APIs like Capybara.
+Using it is dead simple, and with a little help from <code>Rack::Proxy</code> you can use
+it to test just about anything.</p>
+
+<p>Here's a complete spec for testing our ping middleware.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="nb">require</span> <span class="s1">&#39;rack/test&#39;</span>
+
+<span class="n">describe</span> <span class="no">Ping</span> <span class="k">do</span>
+  <span class="kp">include</span> <span class="no">Rack</span><span class="o">::</span><span class="no">Test</span><span class="o">::</span><span class="no">Methods</span>
+  <span class="n">let</span><span class="p">(</span><span class="ss">:app</span><span class="p">)</span> <span class="p">{</span> <span class="no">Ping</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="kp">nil</span><span class="p">)</span> <span class="p">}</span>
+  
+  <span class="n">describe</span> <span class="s2">&quot;GET /ping&quot;</span> <span class="k">do</span>
+    <span class="n">before</span> <span class="p">{</span> <span class="n">get</span> <span class="s2">&quot;/ping&quot;</span> <span class="p">}</span>
+    
+    <span class="n">it</span> <span class="s2">&quot;responds with 200 OK&quot;</span> <span class="k">do</span>
+      <span class="n">last_response</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">should</span> <span class="o">==</span> <span class="mi">200</span>
+      <span class="n">last_response</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">should</span> <span class="o">==</span> <span class="s2">&quot;OK&quot;</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+<span class="k">end</span></pre></div>             </td>           </tr>                               <tr id="section-33">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-33">&#182;</a>               </div>               <h1>Bonus round: async apps</h1>             </td>             <td class="code">               <div class="highlight"><pre></pre></div>             </td>           </tr>                               <tr id="section-34">             <td class="docs">               <div class="pilwrap">                 <a class="pilcrow" href="#section-34">&#182;</a>               </div>               <p>You've probably heard that Node is awesome because everything is asynchronous.
+Well we can do the same thing using some Rack extensions in Thin. Here's a
+basic async Thin app.</p>
+
+<p>This is useful if your backend takes a long time to reply, and is async itself.
+Thin is single-threaded so any long-blocking code will block the event loop,
+meaning Thin cannot process other concurrent requests.</p>
+
+<p>There are some frameworks that take advantage of this, such as <a href="http://m.onkey.org/introducing-cramp">Cramp</a>,
+<a href="http://rubygems.org/gems/async_sinatra">Async Sinatra</a> and <a href="https://rubygems.org/gems/async-rack">Async Rack</a>.</p>             </td>             <td class="code">               <div class="highlight"><pre><span class="nb">require</span> <span class="s1">&#39;eventmachine&#39;</span>
+
+<span class="k">class</span> <span class="nc">AsyncApp</span>
+  <span class="k">class</span> <span class="nc">ResponseBody</span>
+    <span class="kp">include</span> <span class="no">EM</span><span class="o">::</span><span class="no">Deferrable</span>
+    <span class="k">alias</span> <span class="ss">:each</span> <span class="ss">:callback</span>
+  <span class="k">end</span>
+  
+  <span class="k">def</span> <span class="nf">call</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+    <span class="n">callback</span> <span class="o">=</span> <span class="n">env</span><span class="o">[</span><span class="s1">&#39;async.callback&#39;</span><span class="o">]</span>            <span class="c1"># Thin&#39;s async callback</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="no">ResponseBody</span><span class="o">.</span><span class="n">new</span>                 <span class="c1"># Deferred response object</span>
+    <span class="n">headers</span>  <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;Content-Type&#39;</span> <span class="o">=&gt;</span> <span class="s1">&#39;text/html&#39;</span><span class="p">}</span>
+    <span class="n">callback</span><span class="o">.</span><span class="n">call</span><span class="p">(</span><span class="o">[</span><span class="mi">200</span><span class="p">,</span> <span class="n">headers</span><span class="p">,</span> <span class="n">response</span><span class="o">]</span><span class="p">)</span>     <span class="c1"># Send the headers right now</span>
+    <span class="no">EM</span><span class="o">.</span><span class="n">add_timer</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span> <span class="k">do</span>
+      <span class="n">response</span><span class="o">.</span><span class="n">succeed</span><span class="p">(</span><span class="s1">&#39;Hello!&#39;</span><span class="p">)</span>                <span class="c1"># Send the body in 5 seconds</span>
+    <span class="k">end</span>
+    <span class="o">[-</span><span class="mi">1</span><span class="p">,</span> <span class="p">{},</span> <span class="o">[]]</span>                                <span class="c1"># Async response</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="n">run</span> <span class="no">AsyncApp</span><span class="o">.</span><span class="n">new</span>
+
+</pre></div>             </td>           </tr>                </tbody>     </table>   </div> </body> </html> 
